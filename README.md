@@ -13,4 +13,4 @@
 - `tar -czf .tarballs/files.tgz -C web/sites/default/files/ .`
 - Run `git push`, create a new release adding `.tarballs/db.sql.tar.gz` and `.tarballs/files.tgz` as assets
 - Update the URLs in `ddev/ddev` ddevapp_test.go for the new release
-- Rerun the tests for Drupal11 with `GOTEST_SHORT=18 make testpkg TESTARGS="-run TestDdevFullSiteSetup"`
+- Rerun the tests for Drupal11 with `GOTEST_SHORT=19 make testpkg TESTARGS="-run TestDdevFullSiteSetup"`
