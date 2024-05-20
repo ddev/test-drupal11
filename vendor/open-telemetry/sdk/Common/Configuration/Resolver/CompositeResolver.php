@@ -7,7 +7,7 @@ namespace OpenTelemetry\SDK\Common\Configuration\Resolver;
 use OpenTelemetry\SDK\Common\Configuration\Configuration;
 
 /**
- * @interal
+ * @internal
  */
 class CompositeResolver
 {
@@ -18,8 +18,8 @@ class CompositeResolver
     {
         static $instance;
         $instance ??= new self([
-            new PhpIniResolver(),
             new EnvironmentResolver(),
+            new PhpIniResolver(),
         ]);
 
         return $instance;

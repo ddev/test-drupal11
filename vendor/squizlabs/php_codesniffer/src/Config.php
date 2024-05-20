@@ -12,53 +12,56 @@
 
 namespace PHP_CodeSniffer;
 
+use Exception;
+use Phar;
 use PHP_CodeSniffer\Exceptions\DeepExitException;
 use PHP_CodeSniffer\Exceptions\RuntimeException;
 use PHP_CodeSniffer\Util\Common;
+use PHP_CodeSniffer\Util\Standards;
 
 /**
  * Stores the configuration used to run PHPCS and PHPCBF.
  *
- * @property string[] $files           The files and directories to check.
- * @property string[] $standards       The standards being used for checking.
- * @property int      $verbosity       How verbose the output should be.
- *                                     0: no unnecessary output
- *                                     1: basic output for files being checked
- *                                     2: ruleset and file parsing output
- *                                     3: sniff execution output
- * @property bool     $interactive     Enable interactive checking mode.
- * @property int      $parallel        Check files in parallel.
- * @property bool     $cache           Enable the use of the file cache.
- * @property bool     $cacheFile       A file where the cache data should be written
- * @property bool     $colors          Display colours in output.
- * @property bool     $explain         Explain the coding standards.
- * @property bool     $local           Process local files in directories only (no recursion).
- * @property bool     $showSources     Show sniff source codes in report output.
- * @property bool     $showProgress    Show basic progress information while running.
- * @property bool     $quiet           Quiet mode; disables progress and verbose output.
- * @property bool     $annotations     Process phpcs: annotations.
- * @property int      $tabWidth        How many spaces each tab is worth.
- * @property string   $encoding        The encoding of the files being checked.
- * @property string[] $sniffs          The sniffs that should be used for checking.
- *                                     If empty, all sniffs in the supplied standards will be used.
- * @property string[] $exclude         The sniffs that should be excluded from checking.
- *                                     If empty, all sniffs in the supplied standards will be used.
- * @property string[] $ignored         Regular expressions used to ignore files and folders during checking.
- * @property string   $reportFile      A file where the report output should be written.
- * @property string   $generator       The documentation generator to use.
- * @property string   $filter          The filter to use for the run.
- * @property string[] $bootstrap       One of more files to include before the run begins.
- * @property int      $reportWidth     The maximum number of columns that reports should use for output.
- *                                     Set to "auto" for have this value changed to the width of the terminal.
- * @property int      $errorSeverity   The minimum severity an error must have to be displayed.
- * @property int      $warningSeverity The minimum severity a warning must have to be displayed.
- * @property bool     $recordErrors    Record the content of error messages as well as error counts.
- * @property string   $suffix          A suffix to add to fixed files.
- * @property string   $basepath        A file system location to strip from the paths of files shown in reports.
- * @property bool     $stdin           Read content from STDIN instead of supplied files.
- * @property string   $stdinContent    Content passed directly to PHPCS on STDIN.
- * @property string   $stdinPath       The path to use for content passed on STDIN.
- * @property bool     $trackTime       Whether or not to track sniff run time.
+ * @property string[]   $files           The files and directories to check.
+ * @property string[]   $standards       The standards being used for checking.
+ * @property int        $verbosity       How verbose the output should be.
+ *                                       0: no unnecessary output
+ *                                       1: basic output for files being checked
+ *                                       2: ruleset and file parsing output
+ *                                       3: sniff execution output
+ * @property bool       $interactive     Enable interactive checking mode.
+ * @property int        $parallel        Check files in parallel.
+ * @property bool       $cache           Enable the use of the file cache.
+ * @property string     $cacheFile       Path to the file where the cache data should be written
+ * @property bool       $colors          Display colours in output.
+ * @property bool       $explain         Explain the coding standards.
+ * @property bool       $local           Process local files in directories only (no recursion).
+ * @property bool       $showSources     Show sniff source codes in report output.
+ * @property bool       $showProgress    Show basic progress information while running.
+ * @property bool       $quiet           Quiet mode; disables progress and verbose output.
+ * @property bool       $annotations     Process phpcs: annotations.
+ * @property int        $tabWidth        How many spaces each tab is worth.
+ * @property string     $encoding        The encoding of the files being checked.
+ * @property string[]   $sniffs          The sniffs that should be used for checking.
+ *                                       If empty, all sniffs in the supplied standards will be used.
+ * @property string[]   $exclude         The sniffs that should be excluded from checking.
+ *                                       If empty, all sniffs in the supplied standards will be used.
+ * @property string[]   $ignored         Regular expressions used to ignore files and folders during checking.
+ * @property string     $reportFile      A file where the report output should be written.
+ * @property string     $generator       The documentation generator to use.
+ * @property string     $filter          The filter to use for the run.
+ * @property string[]   $bootstrap       One of more files to include before the run begins.
+ * @property int|string $reportWidth     The maximum number of columns that reports should use for output.
+ *                                       Set to "auto" for have this value changed to the width of the terminal.
+ * @property int        $errorSeverity   The minimum severity an error must have to be displayed.
+ * @property int        $warningSeverity The minimum severity a warning must have to be displayed.
+ * @property bool       $recordErrors    Record the content of error messages as well as error counts.
+ * @property string     $suffix          A suffix to add to fixed files.
+ * @property string     $basepath        A file system location to strip from the paths of files shown in reports.
+ * @property bool       $stdin           Read content from STDIN instead of supplied files.
+ * @property string     $stdinContent    Content passed directly to PHPCS on STDIN.
+ * @property string     $stdinPath       The path to use for content passed on STDIN.
+ * @property bool       $trackTime       Whether or not to track sniff run time.
  *
  * @property array<string, string>      $extensions File extensions that should be checked, and what tokenizer to use.
  *                                                  E.g., array('inc' => 'PHP');
@@ -81,7 +84,7 @@ class Config
      *
      * @var string
      */
-    const VERSION = '3.8.0';
+    const VERSION = '3.9.2';
 
     /**
      * Package stability; either stable, beta or alpha.
@@ -169,7 +172,7 @@ class Config
     /**
      * Command line values that the user has supplied directly.
      *
-     * @var array<string, TRUE>
+     * @var array<string, true|array<string, true>>
      */
     private static $overriddenDefaults = [];
 
@@ -265,7 +268,7 @@ class Config
             $cleaned = [];
 
             // Check if the standard name is valid, or if the case is invalid.
-            $installedStandards = Util\Standards::getInstalledStandards();
+            $installedStandards = Standards::getInstalledStandards();
             foreach ($value as $standard) {
                 foreach ($installedStandards as $validStandard) {
                     if (strtolower($standard) === strtolower($validStandard)) {
@@ -420,7 +423,7 @@ class Config
 
         // Check for content on STDIN.
         if ($this->stdin === true
-            || (Util\Common::isStdinATTY() === false
+            || (Common::isStdinATTY() === false
             && feof($handle) === false)
         ) {
             $readStreams = [$handle];
@@ -649,7 +652,7 @@ class Config
             throw new DeepExitException($output, 0);
         case 'i' :
             ob_start();
-            Util\Standards::printInstalledStandards();
+            Standards::printInstalledStandards();
             $output = ob_get_contents();
             ob_end_clean();
             throw new DeepExitException($output, 0);
@@ -812,7 +815,7 @@ class Config
 
             try {
                 $this->setConfigData($key, $value);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 throw new DeepExitException($e->getMessage().PHP_EOL, 3);
             }
 
@@ -840,7 +843,7 @@ class Config
             } else {
                 try {
                     $this->setConfigData($key, null);
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     throw new DeepExitException($e->getMessage().PHP_EOL, 3);
                 }
 
@@ -922,7 +925,7 @@ class Config
                 $this->cache = true;
                 self::$overriddenDefaults['cache'] = true;
 
-                $this->cacheFile = Util\Common::realpath(substr($arg, 6));
+                $this->cacheFile = Common::realpath(substr($arg, 6));
 
                 // It may not exist and return false instead.
                 if ($this->cacheFile === false) {
@@ -941,9 +944,9 @@ class Config
                     } else {
                         if ($dir[0] === '/') {
                             // An absolute path.
-                            $dir = Util\Common::realpath($dir);
+                            $dir = Common::realpath($dir);
                         } else {
-                            $dir = Util\Common::realpath(getcwd().'/'.$dir);
+                            $dir = Common::realpath(getcwd().'/'.$dir);
                         }
 
                         if ($dir !== false) {
@@ -964,7 +967,7 @@ class Config
                 $files     = explode(',', substr($arg, 10));
                 $bootstrap = [];
                 foreach ($files as $file) {
-                    $path = Util\Common::realpath($file);
+                    $path = Common::realpath($file);
                     if ($path === false) {
                         $error  = 'ERROR: The specified bootstrap file "'.$file.'" does not exist'.PHP_EOL.PHP_EOL;
                         $error .= $this->printShortUsage(true);
@@ -978,7 +981,7 @@ class Config
                 self::$overriddenDefaults['bootstrap'] = true;
             } else if (substr($arg, 0, 10) === 'file-list=') {
                 $fileList = substr($arg, 10);
-                $path     = Util\Common::realpath($fileList);
+                $path     = Common::realpath($fileList);
                 if ($path === false) {
                     $error  = 'ERROR: The specified file list "'.$fileList.'" does not exist'.PHP_EOL.PHP_EOL;
                     $error .= $this->printShortUsage(true);
@@ -1001,7 +1004,7 @@ class Config
                     break;
                 }
 
-                $this->stdinPath = Util\Common::realpath(substr($arg, 11));
+                $this->stdinPath = Common::realpath(substr($arg, 11));
 
                 // It may not exist and return false instead, so use whatever they gave us.
                 if ($this->stdinPath === false) {
@@ -1014,13 +1017,13 @@ class Config
                     break;
                 }
 
-                $this->reportFile = Util\Common::realpath(substr($arg, 12));
+                $this->reportFile = Common::realpath(substr($arg, 12));
 
                 // It may not exist and return false instead.
                 if ($this->reportFile === false) {
                     $this->reportFile = substr($arg, 12);
 
-                    $dir = Util\Common::realpath(dirname($this->reportFile));
+                    $dir = Common::realpath(dirname($this->reportFile));
                     if (is_dir($dir) === false) {
                         $error  = 'ERROR: The specified report file path "'.$this->reportFile.'" points to a non-existent directory'.PHP_EOL.PHP_EOL;
                         $error .= $this->printShortUsage(true);
@@ -1056,7 +1059,7 @@ class Config
                     break;
                 }
 
-                $this->basepath = Util\Common::realpath(substr($arg, 9));
+                $this->basepath = Common::realpath(substr($arg, 9));
 
                 // It may not exist and return false instead.
                 if ($this->basepath === false) {
@@ -1083,7 +1086,7 @@ class Config
                         if ($output === false) {
                             $output = null;
                         } else {
-                            $dir = Util\Common::realpath(dirname($output));
+                            $dir = Common::realpath(dirname($output));
                             if (is_dir($dir) === false) {
                                 $error  = 'ERROR: The specified '.$report.' report file path "'.$output.'" points to a non-existent directory'.PHP_EOL.PHP_EOL;
                                 $error .= $this->printShortUsage(true);
@@ -1317,7 +1320,7 @@ class Config
             return;
         }
 
-        $file = Util\Common::realpath($path);
+        $file = Common::realpath($path);
         if (file_exists($file) === false) {
             if ($this->dieOnUnknownArg === false) {
                 return;
@@ -1407,7 +1410,7 @@ class Config
         echo ' -n    Do not print warnings (shortcut for --warning-severity=0)'.PHP_EOL;
         echo ' -w    Print both warnings and errors (this is the default)'.PHP_EOL;
         echo ' -l    Local directory only, no recursion'.PHP_EOL;
-        echo ' -s    Show sniff codes in all reports'.PHP_EOL;
+        echo ' -s    Show error codes in all reports'.PHP_EOL;
         echo ' -a    Run interactively'.PHP_EOL;
         echo ' -e    Explain a standard by showing the sniffs it includes'.PHP_EOL;
         echo ' -p    Show progress of the run'.PHP_EOL;
@@ -1608,7 +1611,7 @@ class Config
         if ($temp === false) {
             $path = '';
             if (is_callable('\Phar::running') === true) {
-                $path = \Phar::running(false);
+                $path = Phar::running(false);
             }
 
             if ($path !== '') {
@@ -1653,7 +1656,7 @@ class Config
         // If the installed paths are being set, make sure all known
         // standards paths are added to the autoloader.
         if ($key === 'installed_paths') {
-            $installedStandards = Util\Standards::getInstalledStandardDetails();
+            $installedStandards = Standards::getInstalledStandardDetails();
             foreach ($installedStandards as $name => $details) {
                 Autoload::addSearchPath($details['path'], $details['namespace']);
             }
@@ -1679,7 +1682,7 @@ class Config
 
         $path = '';
         if (is_callable('\Phar::running') === true) {
-            $path = \Phar::running(false);
+            $path = Phar::running(false);
         }
 
         if ($path !== '') {

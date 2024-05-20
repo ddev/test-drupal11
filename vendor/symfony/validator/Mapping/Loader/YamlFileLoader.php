@@ -24,12 +24,7 @@ use Symfony\Component\Yaml\Yaml;
  */
 class YamlFileLoader extends FileLoader
 {
-    /**
-     * An array of YAML class descriptions.
-     *
-     * @var array
-     */
-    protected $classes;
+    protected array $classes;
 
     public function __construct(string $file)
     {
@@ -89,6 +84,12 @@ class YamlFileLoader extends FileLoader
 
                 if (\is_array($options)) {
                     $options = $this->parseNodes($options);
+                }
+
+                if (null !== $options && (!\is_array($options) || array_is_list($options))) {
+                    $options = [
+                        'value' => $options,
+                    ];
                 }
 
                 $values[] = $this->newConstraint(key($childNodes), $options);
