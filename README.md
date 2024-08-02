@@ -6,7 +6,7 @@
 - `ddev config --update`
 - `git add -u` and `git add *`
 - `ddev drush si -y demo_umami --account-pass=admin`
-- Log in and edit the content "Super easy vegetarian pasta bake" (https://test-drupal11.ddev.site/en/node/3/edit) to change the title to "Super easy vegetarian pasta bake TEST PROJECT".
+- Log in and edit the content "Super easy vegetarian pasta bake" (https://test-drupal11.ddev.site/en/node/3/edit) to change the "recipe name" to "Super easy vegetarian pasta bake TEST PROJECT".
 - `ddev export-db --file=.tarballs/db.sql --gzip=false`
 - `tar -czf .tarballs/db.sql.tar.gz -C .tarballs db.sql`
 - `cp .tarballs/Logo.png web/sites/default/files/`
