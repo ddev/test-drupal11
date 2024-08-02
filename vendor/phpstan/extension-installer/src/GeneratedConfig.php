@@ -21,7 +21,22 @@ final class GeneratedConfig
         0 => 'phpstan/rules.neon',
       ),
     ),
-    'version' => '2.7.6',
+    'version' => '2.7.7',
+    'phpstanVersionConstraint' => NULL,
+  ),
+  'composer/pcre' => 
+  array (
+    'install_path' => '/var/www/html/vendor/composer/pcre',
+    'relative_install_path' => '../../../composer/pcre',
+    'extra' => 
+    array (
+      'includes' => 
+      array (
+        0 => 'extension.neon',
+      ),
+    ),
+    'version' => '3.2.0',
+    'phpstanVersionConstraint' => NULL,
   ),
   'mglaman/phpstan-drupal' => 
   array (
@@ -36,6 +51,7 @@ final class GeneratedConfig
       ),
     ),
     'version' => '1.2.11',
+    'phpstanVersionConstraint' => '>=1.10.56.0-dev, <2.0.0.0-dev',
   ),
   'phpstan/phpstan-deprecation-rules' => 
   array (
@@ -49,6 +65,7 @@ final class GeneratedConfig
       ),
     ),
     'version' => '1.2.0',
+    'phpstanVersionConstraint' => '>=1.11.0.0-dev, <2.0.0.0-dev',
   ),
   'phpstan/phpstan-phpunit' => 
   array (
@@ -63,11 +80,15 @@ final class GeneratedConfig
       ),
     ),
     'version' => '1.4.0',
+    'phpstanVersionConstraint' => '>=1.11.0.0-dev, <2.0.0.0-dev',
   ),
 );
 
 	public const NOT_INSTALLED = array (
 );
+
+	/** @var string|null */
+	public const PHPSTAN_VERSION_CONSTRAINT = '>=1.11.0.0-dev, <2.0.0.0-dev';
 
 	private function __construct()
 	{

@@ -102,8 +102,8 @@ abstract class EntityDisplayFormBase extends EntityForm {
    * @return array
    *   Example usage:
    *   @code
-   *     return array(
-   *       'content' => array(
+   *     return [
+   *       'content' => [
    *         // label for the region.
    *         'title' => $this->t('Content'),
    *         // Indicates if the region is visible in the UI.
@@ -111,8 +111,8 @@ abstract class EntityDisplayFormBase extends EntityForm {
    *         // A message to indicate that there is nothing to be displayed in
    *         // the region.
    *         'message' => $this->t('No field is displayed.'),
-   *       ),
-   *     );
+   *       ],
+   *     ];
    *   @endcode
    */
   public function getRegions() {
@@ -268,7 +268,11 @@ abstract class EntityDisplayFormBase extends EntityForm {
         // spinners will be added manually by the client-side script.
         'progress' => 'none',
       ],
-      '#attributes' => ['class' => ['visually-hidden']],
+      '#attributes' => [
+        'class' => ['visually-hidden'],
+        // Ensure the button is not focusable via keyboard navigation.
+        'tabindex' => '-1',
+      ],
     ];
 
     $form['actions'] = ['#type' => 'actions'];
@@ -579,7 +583,12 @@ abstract class EntityDisplayFormBase extends EntityForm {
       $this->saveDisplayStatuses($statuses);
     }
 
-    $this->messenger()->addStatus($this->t('Your settings have been saved.'));
+    // The saved message may not be needed in some cases. An example of
+    // this is in LayoutBuilderEntityViewDisplayForm which can redirect
+    // the user to a confirmation form before the settings are saved.
+    if (!$form_state->getRedirect()) {
+      $this->messenger()->addStatus($this->t('Your settings have been saved.'));
+    }
   }
 
   /**

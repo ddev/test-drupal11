@@ -422,6 +422,18 @@ class Selenium2Driver extends CoreDriver
 
     public function reset()
     {
+        $windows = $this->getWindowNames();
+        // Remove the main window from the list of windows.
+        array_shift($windows);
+
+        foreach ($windows as $name) {
+            $this->switchToWindow($name);
+            $this->getWebDriverSession()->window()->close();
+        }
+
+        // Ensure the main window is active.
+        $this->switchToWindow();
+
         $this->getWebDriverSession()->deleteAllCookies();
     }
 
@@ -843,14 +855,10 @@ JS;
 
     private function clickOnElement(Element $element): void
     {
-        if ($this->isW3C()) {
-            $element->click();
-        }
-        else {
-            // Move the mouse to the element as Selenium does not allow clicking on an element which is outside the viewport
-            $this->getWebDriverSession()->moveto(array('element' => $element->getID()));
-            $element->click();
-        }
+        // Move the mouse to the element as Selenium does not allow clicking on an element which is outside the viewport
+        $this->doMouseOver($element);
+
+        $element->click();
     }
 
     public function doubleClick(string $xpath)
@@ -939,6 +947,11 @@ JS;
 
     public function mouseOver(string $xpath)
     {
+        $this->doMouseOver($this->findElement($xpath));
+    }
+
+    private function doMouseOver(Element $element): void
+    {
         if ($this->isW3C()) {
             $actions = array(
                 'actions' => [
@@ -947,7 +960,7 @@ JS;
                         'id' => 'mouse1',
                         'parameters' => ['pointerType' => 'mouse'],
                         'actions' => [
-                            ['type' => 'pointerMove', 'duration' => 0, 'origin' => [Element::WEB_ELEMENT_ID => $this->findElement($xpath)->getID()], 'x' => 0, 'y' => 0],
+                            ['type' => 'pointerMove', 'duration' => 0, 'origin' => [Element::WEB_ELEMENT_ID => $element->getID()], 'x' => 0, 'y' => 0],
                         ],
                     ],
                 ],
@@ -957,7 +970,7 @@ JS;
         }
         else {
             $this->getWebDriverSession()->moveto(array(
-                'element' => $this->findElement($xpath)->getID()
+                'element' => $element->getID()
             ));
         }
     }
