@@ -2,7 +2,7 @@
 
 !!! tip
 
-      1. Drush 13 expects commandfiles to use [Autowire](https://github.com/drush-ops/drush/blob/13.x/src/Commands/AutowireTrait.php) to inject Drupal and Drush dependencies. Prior versions used a [drush.services.yml file](https://www.drush.org/11.x/dependency-injection/#services-files) which is now deprecated and will be removed in Drush 13.
+      1. Drush 13 expects commandfiles to use the [AutowireTrait](https://github.com/drush-ops/drush/blob/13.x/src/Commands/AutowireTrait.php) to inject Drupal and Drush dependencies. Prior versions used a [drush.services.yml file](https://www.drush.org/11.x/dependency-injection/#services-files) which is now deprecated and will be removed in Drush 14.
       1. Drush 12 expects all commandfiles in the `<module-name>/src/Drush/<Commands|Generators>` directory. The `Drush` subdirectory is a new requirement.
 
 Creating a new Drush command is easy. Follow the steps below.
@@ -90,7 +90,7 @@ Such commands are auto-discovered by their class PSR4 namespace and class/file n
   }
   ```
   then the Drush global commands class namespace should be `My\Custom\Library\Drush\Commands` and the class file should be located under the `src/Drush/Commands` directory.
-* The class and file name ends with `*DrushCommands`, e.g. `FooDrushCommands`.
+* The class and file name ends with `*Commands`, e.g. `FooCommands`.
 
 Auto-discovered commandfiles should declare their Drush version compatibility via a `conflict` directive. For example, a Composer-managed site-wide command that works with both Drush 11 and Drush 12 might contain something similar to the following in its composer.json file:
 ```json
@@ -151,3 +151,11 @@ With this configuration in place, global commands may be placed as described in 
         1. The directory above `Commands` must be one of:
             1.  A Folder listed in the 'include' option. Include may be provided via [config](#global-drush-commands) or via CLI.
             1.  ../drush, /drush or /sites/all/drush. These paths are relative to Drupal root.
+
+Xdebug
+------------
+
+Drush disables Xdebug by default. This improves performance substantially, because developers are often debugging something other than Drush and they still need to clear caches, import config, etc. There are two equivalent ways to override Drush's disabling of Xdebug:
+
+- Pass the `--xdebug` global option.
+- Set an environment variable: `DRUSH_ALLOW_XDEBUG=1 drush [command]`
