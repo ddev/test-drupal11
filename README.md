@@ -3,7 +3,7 @@
 - Clone this repo, which was created with the Drupal 11 quickstart
 - `ddev config --auto`
 - To update the repo: `ddev composer update --with-all-dependencies && ddev composer require drush/drush`
-- `ddev config --update`
+- `ddev composer install --no-dev`
 - `git add -u` and `git add *`
 - `ddev drush si -y demo_umami --account-pass=admin`
 - Log in and edit the content "Super easy vegetarian pasta bake" (https://test-drupal11.ddev.site/en/node/3/edit) to change the "recipe name" to "Super easy vegetarian pasta bake TEST PROJECT".
