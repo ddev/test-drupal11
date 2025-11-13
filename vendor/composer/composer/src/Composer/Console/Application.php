@@ -20,7 +20,9 @@ use Composer\Util\Silencer;
 use LogicException;
 use RuntimeException;
 use Symfony\Component\Console\Application as BaseApplication;
+use Symfony\Component\Console\Command\Command as SymfonyCommand;
 use Symfony\Component\Console\Exception\CommandNotFoundException;
+use Symfony\Component\Console\Exception\ExceptionInterface;
 use Symfony\Component\Console\Helper\HelperSet;
 use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputDefinition;
@@ -173,7 +175,7 @@ class Application extends BaseApplication
 
         // determine command name to be executed without including plugin commands
         $commandName = '';
-        if ($name = $this->getCommandName($input)) {
+        if ($name = $this->getCommandNameBeforeBinding($input)) {
             try {
                 $commandName = $this->find($name)->getName();
             } catch (CommandNotFoundException $e) {
@@ -207,7 +209,7 @@ class Application extends BaseApplication
                         $io->writeError('<info>No composer.json in current directory, to use the one at '.$dir.' run interactively or set config.use-parent-dir to true</info>');
                         break;
                     }
-                    if ($useParentDirIfNoJsonAvailable === true || $io->askConfirmation('<info>No composer.json in current directory, do you want to use the one at '.$dir.'?</info> [<comment>Y,n</comment>]? ')) {
+                    if ($useParentDirIfNoJsonAvailable === true || $io->askConfirmation('<info>No composer.json in current directory, do you want to use the one at '.$dir.'?</info> [<comment>y,n</comment>]? ')) {
                         if ($useParentDirIfNoJsonAvailable === true) {
                             $io->writeError('<info>No composer.json in current directory, changing working directory to '.$dir.'</info>');
                         } else {
@@ -279,7 +281,8 @@ class Application extends BaseApplication
                     if ($this->has($command->getName())) {
                         $io->writeError('<warning>Plugin command '.$command->getName().' ('.get_class($command).') would override a Composer command and has been skipped</warning>');
                     } else {
-                        $this->add($command);
+                        // Compatibility layer for symfony/console <7.4
+                        method_exists($this, 'addCommand') ? $this->addCommand($command) : $this->add($command);
                     }
                 }
             } catch (NoSslException $e) {
@@ -311,7 +314,7 @@ class Application extends BaseApplication
 
         // determine command name to be executed incl plugin commands, and check if it's a proxy command
         $isProxyCommand = false;
-        if ($name = $this->getCommandName($input)) {
+        if ($name = $this->getCommandNameBeforeBinding($input)) {
             try {
                 $command = $this->find($name);
                 $commandName = $command->getName();
@@ -379,7 +382,26 @@ class Application extends BaseApplication
 
                                 $aliases = $composer['scripts-aliases'][$script] ?? [];
 
-                                $this->add(new Command\ScriptAliasCommand($script, $description, $aliases));
+                                //if the command is not an array of commands, and points to a valid Command subclass, import its details directly
+                                if (is_string($dummy) && class_exists($dummy) && is_subclass_of($dummy, SymfonyCommand::class)) {
+                                    $cmd = new $dummy($script);
+
+                                    //makes sure the command is find()'able by the name defined in composer.json, and the name isn't overridden in its configure()
+                                    if ($cmd->getName() !== '' && $cmd->getName() !== null && $cmd->getName() !== $script) {
+                                        $io->writeError('<warning>The script named '.$script.' in composer.json has a mismatched name in its class definition. For consistency, either use the same name, or do not define one inside the class.</warning>');
+                                        $cmd->setName($script); //override it with the defined script name
+                                    }
+
+                                    if ($cmd->getDescription() === '' && is_string($description)) {
+                                        $cmd->setDescription($description);
+                                    }
+                                } else {
+                                    //fallback to usual aliasing behavior
+                                    $cmd = new Command\ScriptAliasCommand($script, $description, $aliases);
+                                }
+
+                                // Compatibility layer for symfony/console <7.4
+                                method_exists($this, 'addCommand') ? $this->addCommand($cmd) : $this->add($cmd);
                             }
                         }
                     }
@@ -440,7 +462,7 @@ class Application extends BaseApplication
             // as http error codes are all beyond the 255 range of permitted exit codes
             if ($e instanceof TransportException) {
                 $reflProp = new \ReflectionProperty($e, 'code');
-                $reflProp->setAccessible(true);
+                (\PHP_VERSION_ID < 80100) and $reflProp->setAccessible(true);
                 $reflProp->setValue($e, Installer::ERROR_TRANSPORT_EXCEPTION);
             }
 
@@ -451,15 +473,14 @@ class Application extends BaseApplication
     }
 
     /**
-     * @throws \RuntimeException
-     * @return ?string
+     * @throws RuntimeException
      */
     private function getNewWorkingDir(InputInterface $input): ?string
     {
         /** @var string|null $workingDir */
         $workingDir = $input->getParameterOption(['--working-dir', '-d'], null, true);
         if (null !== $workingDir && !is_dir($workingDir)) {
-            throw new \RuntimeException('Invalid working directory specified, '.$workingDir.' does not exist.');
+            throw new RuntimeException('Invalid working directory specified, '.$workingDir.' does not exist.');
         }
 
         return $workingDir;
@@ -494,6 +515,17 @@ class Application extends BaseApplication
         if ($exception instanceof TransportException && str_contains($exception->getMessage(), 'Unable to use a proxy')) {
             $io->writeError('<error>The following exception indicates your proxy is misconfigured</error>', true, IOInterface::QUIET);
             $io->writeError('<error>Check https://getcomposer.org/doc/faqs/how-to-use-composer-behind-a-proxy.md for details</error>', true, IOInterface::QUIET);
+        }
+
+        if (Platform::isWindows() && $exception instanceof TransportException && str_contains($exception->getMessage(), 'unable to get local issuer certificate')) {
+            $avastDetect = glob('C:\Program Files\Avast*');
+            if (is_array($avastDetect) && count($avastDetect) !== 0) {
+                $io->writeError('<error>The following exception indicates a possible issue with the Avast Firewall</error>', true, IOInterface::QUIET);
+                $io->writeError('<error>Check https://getcomposer.org/local-issuer for details</error>', true, IOInterface::QUIET);
+            } else {
+                $io->writeError('<error>The following exception indicates a possible issue with a Firewall/Antivirus</error>', true, IOInterface::QUIET);
+                $io->writeError('<error>Check https://getcomposer.org/local-issuer for details</error>', true, IOInterface::QUIET);
+            }
         }
 
         if (Platform::isWindows() && false !== strpos($exception->getMessage(), 'The system cannot find the path specified')) {
@@ -587,11 +619,11 @@ class Application extends BaseApplication
 
     /**
      * Initializes all the composer commands.
-     * @return \Symfony\Component\Console\Command\Command[]
+     * @return SymfonyCommand[]
      */
     protected function getDefaultCommands(): array
     {
-        $commands = array_merge(parent::getDefaultCommands(), [
+        return array_merge(parent::getDefaultCommands(), [
             new Command\AboutCommand(),
             new Command\ConfigCommand(),
             new Command\DependsCommand(),
@@ -622,13 +654,27 @@ class Application extends BaseApplication
             new Command\FundCommand(),
             new Command\ReinstallCommand(),
             new Command\BumpCommand(),
+            new Command\RepositoryCommand(),
+            new Command\SelfUpdateCommand(),
         ]);
+    }
 
-        if (strpos(__FILE__, 'phar:') === 0 || '1' === Platform::getEnv('COMPOSER_TESTS_ARE_RUNNING')) {
-            $commands[] = new Command\SelfUpdateCommand();
+    /**
+     * This ensures we can find the correct command name even if a global input option is present before it
+     *
+     * e.g. "composer -d foo bar" should detect bar as the command name, and not foo
+     */
+    private function getCommandNameBeforeBinding(InputInterface $input): ?string
+    {
+        $input = clone $input;
+        try {
+            // Makes ArgvInput::getFirstArgument() able to distinguish an option from an argument.
+            $input->bind($this->getDefinition());
+        } catch (ExceptionInterface $e) {
+            // Errors must be ignored, full binding/validation happens later when the command is known.
         }
 
-        return $commands;
+        return $input->getFirstArgument();
     }
 
     public function getLongVersion(): string

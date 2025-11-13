@@ -274,7 +274,7 @@ class Factory
      * @param  bool                              $disableScripts Whether scripts should not be run
      * @param  bool                              $fullLoad       Whether to initialize everything or only main project stuff (used when loading the global composer)
      * @throws \InvalidArgumentException
-     * @throws \UnexpectedValueException
+     * @throws UnexpectedValueException
      * @return Composer|PartialComposer Composer if $fullLoad is true, otherwise PartialComposer
      * @phpstan-return ($fullLoad is true ? Composer : PartialComposer)
      */
@@ -324,7 +324,9 @@ class Factory
 
         // Load config and override with local config/auth config
         $config = static::createConfig($io, $cwd);
+        $isGlobal = $localConfigSource !== Config::SOURCE_UNKNOWN && realpath($config->get('home')) === realpath(dirname($localConfigSource));
         $config->merge($localConfig, $localConfigSource);
+
         if (isset($composerFile)) {
             $io->writeError('Loading config file ' . $composerFile .' ('.realpath($composerFile).')', true, IOInterface::DEBUG);
             $config->setConfigSource(new JsonConfigSource(new JsonFile(realpath($composerFile), null, $io)));
@@ -346,6 +348,9 @@ class Factory
         // initialize composer
         $composer = $fullLoad ? new Composer() : new PartialComposer();
         $composer->setConfig($config);
+        if ($isGlobal) {
+            $composer->setGlobal();
+        }
 
         if ($fullLoad) {
             // load auth configs into the IO instance
@@ -429,14 +434,14 @@ class Factory
 
         if ($composer instanceof Composer) {
             $globalComposer = null;
-            if (realpath($config->get('home')) !== $cwd) {
+            if (!$composer->isGlobal()) {
                 $globalComposer = $this->createGlobalComposer($io, $config, $disablePlugins, $disableScripts);
             }
 
             $pm = $this->createPluginManager($io, $composer, $globalComposer, $disablePlugins);
             $composer->setPluginManager($pm);
 
-            if (realpath($config->get('home')) === $cwd) {
+            if ($composer->isGlobal()) {
                 $pm->setRunningInGlobalDir(true);
             }
 
@@ -466,9 +471,6 @@ class Factory
         return $factory->createGlobalComposer($io, static::createConfig($io), $disablePlugins, $disableScripts, true);
     }
 
-    /**
-     * @param Repository\RepositoryManager $rm
-     */
     protected function addLocalRepository(IOInterface $io, RepositoryManager $rm, string $vendorDir, RootPackageInterface $rootPackage, ?ProcessExecutor $process = null): void
     {
         $fs = null;
@@ -499,10 +501,6 @@ class Factory
         return $composer;
     }
 
-    /**
-     * @param  IO\IOInterface             $io
-     * @param  EventDispatcher            $eventDispatcher
-     */
     public function createDownloadManager(IOInterface $io, Config $config, HttpDownloader $httpDownloader, ProcessExecutor $process, ?EventDispatcher $eventDispatcher = null): Downloader\DownloadManager
     {
         $cache = null;
@@ -687,7 +685,7 @@ class Factory
 
         $authData = json_decode($composerAuthEnv);
         if (null === $authData) {
-            throw new \UnexpectedValueException('COMPOSER_AUTH environment variable is malformed, should be a valid JSON object');
+            throw new UnexpectedValueException('COMPOSER_AUTH environment variable is malformed, should be a valid JSON object');
         }
 
         if ($io instanceof IOInterface) {

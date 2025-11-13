@@ -163,7 +163,7 @@ abstract class AbstractBrowser
      */
     public function jsonRequest(string $method, string $uri, array $parameters = [], array $server = [], bool $changeHistory = true): Crawler
     {
-        $content = json_encode($parameters);
+        $content = json_encode($parameters, \JSON_PRESERVE_ZERO_FRACTION);
 
         $this->setServerParameter('CONTENT_TYPE', 'application/json');
         $this->setServerParameter('HTTP_ACCEPT', 'application/json');
@@ -461,9 +461,9 @@ abstract class AbstractBrowser
     /**
      * Returns the script to execute when the request must be insulated.
      *
-     * @psalm-param TRequest $request
-     *
      * @param object $request An origin request instance
+     *
+     * @psalm-param TRequest $request
      *
      * @return string
      *
@@ -661,7 +661,7 @@ abstract class AbstractBrowser
             $uri = $path.$uri;
         }
 
-        return preg_replace('#^(.*?//[^/]+)\/.*$#', '$1', $currentUri).$uri;
+        return preg_replace('#^(.*?//[^/?]+)[/?].*$#', '$1', $currentUri).$uri;
     }
 
     /**
