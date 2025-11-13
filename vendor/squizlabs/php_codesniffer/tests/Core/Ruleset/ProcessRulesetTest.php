@@ -4,7 +4,7 @@
  *
  * @author    Juliette Reinders Folmer <phpcs_nospam@adviesenzo.nl>
  * @copyright 2024 PHPCSStandards and contributors
- * @license   https://github.com/PHPCSStandards/PHP_CodeSniffer/blob/master/licence.txt BSD Licence
+ * @license   https://github.com/PHPCSStandards/PHP_CodeSniffer/blob/HEAD/licence.txt BSD Licence
  */
 
 namespace PHP_CodeSniffer\Tests\Core\Ruleset;
@@ -67,11 +67,14 @@ final class ProcessRulesetTest extends TestCase
             "$std.DeprecatedInvalid.InvalidDeprecationMessage"       => "$sniffDir\DeprecatedInvalid\InvalidDeprecationMessageSniff",
             "$std.DeprecatedInvalid.InvalidDeprecationVersion"       => "$sniffDir\DeprecatedInvalid\InvalidDeprecationVersionSniff",
             "$std.DeprecatedInvalid.InvalidRemovalVersion"           => "$sniffDir\DeprecatedInvalid\InvalidRemovalVersionSniff",
+            "$std.MissingInterface.ValidImplements"                  => "$sniffDir\MissingInterface\ValidImplementsSniff",
+            "$std.MissingInterface.ValidImplementsViaAbstract"       => "$sniffDir\MissingInterface\ValidImplementsViaAbstractSniff",
             "$std.SetProperty.AllowedAsDeclared"                     => "$sniffDir\SetProperty\AllowedAsDeclaredSniff",
             "$std.SetProperty.AllowedViaMagicMethod"                 => "$sniffDir\SetProperty\AllowedViaMagicMethodSniff",
             "$std.SetProperty.AllowedViaStdClass"                    => "$sniffDir\SetProperty\AllowedViaStdClassSniff",
             "$std.SetProperty.NotAllowedViaAttribute"                => "$sniffDir\SetProperty\NotAllowedViaAttributeSniff",
             "$std.SetProperty.PropertyTypeHandling"                  => "$sniffDir\SetProperty\PropertyTypeHandlingSniff",
+            "$std.ValidSniffs.RegisterEmptyArray"                    => "$sniffDir\ValidSniffs\RegisterEmptyArraySniff",
         ];
 
         // Sort the value to make the tests stable as different OSes will read directories
@@ -242,7 +245,7 @@ final class ProcessRulesetTest extends TestCase
     /**
      * Test Helper.
      *
-     * @return \PHP_CodeSniffer\Sniffs\Sniff
+     * @return \PHP_CodeSniffer\Ruleset
      */
     private function getMiscRuleset()
     {
